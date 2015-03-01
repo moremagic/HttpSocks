@@ -10,8 +10,10 @@ import java.io.BufferedOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
+import java.net.HttpURLConnection;
 import java.net.ServerSocket;
 import java.net.Socket;
+import java.net.URL;
 
 /**
  *
@@ -61,8 +63,8 @@ public class HttpSocks {
                         out.write(buffer, 0, cnt);
                         out.flush();
                     }
-                } catch (Exception err) {
-                    //err.printStackTrace();
+                } catch (IOException e) {
+                    //nop
                 }
             }
         };
@@ -73,7 +75,38 @@ public class HttpSocks {
         //DEBUG LOG
         for (int i = 0; i < cnt; i++) {
             System.out.print("0x" + Integer.toHexString(data[i] & 0xff));
+            System.out.print(".");
         }
         System.out.println();
     }
+
+    public void httpdRequest(byte[] data) throws IOException {
+        HttpURLConnection con = null;
+        try {
+            con = (HttpURLConnection) new URL("").openConnection();
+            try(OutputStream out = new BufferedOutputStream(con.getOutputStream())){
+                out.write(data);
+            }
+        } finally {
+            if(con != null)con.disconnect();
+        }
+    }
+    
+    public void httpdServer() throws IOException {
+        int port = 55111;
+        ServerSocket server = new ServerSocket(port);
+        
+        while(true){
+            Socket soc = server.accept();
+            try(InputStream in = soc.getInputStream()){
+                int cnt = -1;
+                byte[] buffer = new byte[1024];
+                while((cnt = in.read(buffer, 0, buffer.length)) != -1){
+                    System.out.print( new String(buffer, 0, cnt) );
+                }
+            }
+        }
+        
+        
+    }    
 }
