@@ -10,29 +10,35 @@ import java.io.BufferedOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
-import java.net.HttpURLConnection;
 import java.net.ServerSocket;
 import java.net.Socket;
-import java.net.URL;
 
 /**
  *
  * @author mitsu
  */
-public class HttpSocks {
+public class ProxyService {
 
     /**
      * @param args the command line arguments
      */
     public static void main(String[] args) {
-        proxy();
+        //new ProxyService().proxy(55110, "192.168.1.6", 49153);
+        
+        
+        new Thread(){
+            public void run(){
+                new Socks2HttpServer().proxy(55110, "localhost", 55111);
+            }
+        }.start();
+        new Thread(){
+            public void run(){
+                new Socks2HttpServer().proxy(55111, "192.168.1.6", 49153);
+            }
+        }.start();
     }
 
-    public static void proxy() {
-        int port = 55110;
-        String socks_host = "192.168.1.6";
-        int socks_port = 49153;
-
+    public void proxy(int port, String socks_host, int socks_port) {
         try {
             ServerSocket server = new ServerSocket(port);
 
@@ -40,17 +46,23 @@ public class HttpSocks {
                 Socket in_socket = server.accept();
                 Socket out_socket = new Socket(socks_host, socks_port);
 
-                createThread(in_socket, out_socket).start();
-                createThread(out_socket, in_socket).start();
+                createSendThread(in_socket, out_socket).start();
+                createReceiveThread(out_socket, in_socket).start();
             }
-
         } catch (Exception err) {
             err.printStackTrace();
         }
-
+    }
+    
+    public Thread createSendThread(final Socket input_socket, final Socket output_socket) throws IOException {
+        return createThread(input_socket, output_socket);
+    }
+    
+    public Thread createReceiveThread(final Socket input_socket, final Socket output_socket) throws IOException {
+        return createThread(input_socket, output_socket);        
     }
 
-    public static Thread createThread(final Socket input_socket, final Socket output_socket) throws IOException {
+    private static final Thread createThread(final Socket input_socket, final Socket output_socket) throws IOException {
         Runnable r = new Runnable() {
             public void run() {
                 try (InputStream in = new BufferedInputStream(input_socket.getInputStream());
@@ -75,38 +87,7 @@ public class HttpSocks {
         //DEBUG LOG
         for (int i = 0; i < cnt; i++) {
             System.out.print("0x" + Integer.toHexString(data[i] & 0xff));
-            System.out.print(".");
         }
         System.out.println();
     }
-
-    public void httpdRequest(byte[] data) throws IOException {
-        HttpURLConnection con = null;
-        try {
-            con = (HttpURLConnection) new URL("").openConnection();
-            try(OutputStream out = new BufferedOutputStream(con.getOutputStream())){
-                out.write(data);
-            }
-        } finally {
-            if(con != null)con.disconnect();
-        }
-    }
-    
-    public void httpdServer() throws IOException {
-        int port = 55111;
-        ServerSocket server = new ServerSocket(port);
-        
-        while(true){
-            Socket soc = server.accept();
-            try(InputStream in = soc.getInputStream()){
-                int cnt = -1;
-                byte[] buffer = new byte[1024];
-                while((cnt = in.read(buffer, 0, buffer.length)) != -1){
-                    System.out.print( new String(buffer, 0, cnt) );
-                }
-            }
-        }
-        
-        
-    }    
 }
