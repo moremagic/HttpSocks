@@ -5,6 +5,9 @@
  */
 package httpsocks;
 
+
+import httpsocks.http.Socks2HttpClient;
+import httpsocks.http.Socks2HttpServer;
 import java.io.BufferedInputStream;
 import java.io.BufferedOutputStream;
 import java.io.IOException;
@@ -23,19 +26,54 @@ public class ProxyService {
      * @param args the command line arguments
      */
     public static void main(String[] args) {
-        //new ProxyService().proxy(55110, "192.168.1.6", 49153);
-        
-        
-        new Thread(){
-            public void run(){
-                new Socks2HttpServer().proxy(55110, "localhost", 55111);
+        /**
+         * plain proxy *
+         */
+        //new ProxyService().proxy(55110, "192.168.56.102", 1080);
+
+        /**
+         * multi plain proxy *
+         */
+        //        new Thread(){
+        //            public void run(){
+        //                new ProxyService().proxy(55110, "localhost", 55111);
+        //            }
+        //        }.start();
+        //        new Thread(){
+        //            public void run(){
+        //                new ProxyService().proxy(55111, "192.168.56.102", 1080);
+        //            }
+        //        }.start();
+        /**
+         * http socks *
+         */
+         new Thread() {
+            public void run() {
+                new Socks2HttpClient().proxy(55110, "localhost", 55111);
             }
         }.start();
-        new Thread(){
-            public void run(){
-                new Socks2HttpServer().proxy(55111, "192.168.1.6", 49153);
+        new Thread() {
+            public void run() {
+                new Socks2HttpServer().proxy(55111, "192.168.56.102", 1080);
             }
         }.start();
+        
+        
+//        /**
+//         * socks 2 string
+//         */
+//        new Thread() {
+//            public void run() {
+//                new Socks2StringClient().proxy(55110, "localhost", 55111);
+//            }
+//        }.start();
+//        new Thread() {
+//            public void run() {
+//                new Socks2StringServer().proxy(55111, "192.168.56.102", 1080);
+//            }
+//        }.start();
+
+
     }
 
     public void proxy(int port, String socks_host, int socks_port) {
@@ -53,13 +91,13 @@ public class ProxyService {
             err.printStackTrace();
         }
     }
-    
+
     public Thread createSendThread(final Socket input_socket, final Socket output_socket) throws IOException {
         return createThread(input_socket, output_socket);
     }
-    
+
     public Thread createReceiveThread(final Socket input_socket, final Socket output_socket) throws IOException {
-        return createThread(input_socket, output_socket);        
+        return createThread(input_socket, output_socket);
     }
 
     private static final Thread createThread(final Socket input_socket, final Socket output_socket) throws IOException {
@@ -86,7 +124,7 @@ public class ProxyService {
     public static void debugLog(byte[] data, int cnt) {
         //DEBUG LOG
         for (int i = 0; i < cnt; i++) {
-            System.out.print("0x" + Integer.toHexString(data[i] & 0xff));
+            System.out.print(String.format("0x%02x", (data[i] & 0xff)));
         }
         System.out.println();
     }
