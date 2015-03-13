@@ -70,7 +70,7 @@ public class Socks2HttpClient extends ProxyService {
         return header.toString() + contents;
     }
     
-    private static String byte2String(byte[] data, int pos, int cnt) throws IOException {
+    public static String byte2String(byte[] data, int pos, int cnt) throws IOException {
         StringBuffer contents = new StringBuffer();
         for (int i = pos; i < cnt-pos; i++) {
             contents.append(String.format("0x%02x", (data[i] & 0xff)));
