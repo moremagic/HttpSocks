@@ -23,14 +23,16 @@ public class HttpSocks {
      * @param args the command line arguments
      */
     public static void main(String[] args) {
-        proxy();
+        if(args.length == 0 || args.length != 3){
+            System.err.println("Usage: java httpssocks.HttpSocks [listen] [host] [port]");
+            System.err.println("  httpssocks.HttpSocks 192.168.1.6 2375");
+            System.exit(-1);
+        }
+        //proxy(55110, "192.168.1.6", 49153);
+        proxy(Integer.parseInt(args[0]), args[1], Integer.parseInt(args[2]));
     }
 
-    public static void proxy() {
-        int port = 55110;
-        String socks_host = "192.168.1.6";
-        int socks_port = 49153;
-
+    public static void proxy(int port, String socks_host, int socks_port) {
         try {
             ServerSocket server = new ServerSocket(port);
 
@@ -71,9 +73,12 @@ public class HttpSocks {
 
     public static void debugLog(byte[] data, int cnt) {
         //DEBUG LOG
+        /*
         for (int i = 0; i < cnt; i++) {
             System.out.print("0x" + Integer.toHexString(data[i] & 0xff));
         }
+        */
+        System.out.print(new String(data, 0 ,cnt));
         System.out.println();
     }
 }
