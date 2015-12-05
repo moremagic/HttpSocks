@@ -5,6 +5,7 @@
  */
 package httpsocks;
 
+import httpsocks.ProxyUtils;
 import java.io.BufferedInputStream;
 import java.io.BufferedOutputStream;
 import java.io.IOException;
@@ -21,30 +22,40 @@ import java.util.List;
  */
 public class HttpSocks {
 
+    static class _DockerHostInfo{
+        public static final List<_DockerHostInfo> HOST_ARRAYS = new ArrayList<>();
+        public int port;
+        public String host;
+
+        public _DockerHostInfo(String host, int port) {
+            this.host = host;
+            this.port = port;
+        }
+    }
+    
     /**
      * @param args the command line arguments
      */
     public static void main(String[] args) {
-        if (args.length == 0 || args.length != 3) {
-            System.err.println("Usage: java httpssocks.HttpSocks [listen] [host] [port]");
-            System.err.println("  httpssocks.HttpSocks 192.168.1.6 2375");
+        if (args.length == 0 || args.length < 3) {
+            System.err.println("Usage: java httpssocks.HttpSocks [listen] { [host] [port] } * n");
+            System.err.println("  httpssocks.HttpSocks 55110 192.168.1.6 2375 192.168.1.7 2375");
             System.exit(-1);
         }
-        //proxy(55110, "192.168.1.6", 49153);
-        proxy(Integer.parseInt(args[0]), args[1], Integer.parseInt(args[2]));
+        
+        for(int i = 1 ; i < args.length ; i += 2){
+            _DockerHostInfo.HOST_ARRAYS.add(new _DockerHostInfo(args[i], Integer.parseInt(args[i+1])));
+        }
+        proxy(Integer.parseInt(args[0]));
     }
 
-    public static void proxy(int port, String socks_host, int socks_port) {
+    public static void proxy(int port) {
         try {
             ServerSocket server = new ServerSocket(port);
 
             while (true) {
-                Socket in_socket = server.accept();
-                Socket out_socket = new Socket(socks_host, socks_port);
-
-                createThread_HEAD(in_socket, out_socket).start();
-                //createThread(in_socket, out_socket).start();
-                //createThread(out_socket, in_socket).start();
+                Socket server_socket = server.accept();
+                createThread_MultiHost(server_socket).start();
             }
 
         } catch (Exception err) {
@@ -62,7 +73,7 @@ public class HttpSocks {
                     int cnt = -1;
                     byte[] buffer = new byte[1024];
                     while ((cnt = in.read(buffer, 0, buffer.length)) != -1) {
-                        debugLog(buffer, cnt);
+                        ProxyUtils.debugLog(buffer, cnt);
                         out.write(buffer, 0, cnt);
                         out.flush();
                     }
@@ -76,50 +87,32 @@ public class HttpSocks {
         return new Thread(r);
     }
 
-    public static Thread createThread_HEAD(final Socket input_socket, final Socket output_socket) throws IOException {
+    public static Thread createThread_MultiHost(final Socket server_socket) throws IOException {
         Runnable r = new Runnable() {
             public void run() {
                 System.out.println("== open == " + this);
-                try (InputStream in = new BufferedInputStream(input_socket.getInputStream());
-                        OutputStream out = new BufferedOutputStream(output_socket.getOutputStream());) {
-
-                    byte[] bSeparator = new byte[]{(byte) (0x0d & 0xff), (byte) (0x0a & 0xff), (byte) (0x0d & 0xff), (byte) (0x0a & 0xff)};
-                    int iSeparatorCnt = 0;
-                    List byteBufferList = new ArrayList();
-                    boolean bData = false;
-
+                try (InputStream in = new BufferedInputStream(server_socket.getInputStream());
+                        OutputStream out = new BufferedOutputStream(server_socket.getOutputStream());){
+                    
+                    List<Byte> inputBuffer = new ArrayList();
+                    
                     int cnt = -1;
-                    byte[] buffer = new byte[1024];
-                    while ((cnt = in.read(buffer, 0, buffer.length)) != -1) {
-                        if (bData) {
-                            debugLog(buffer, cnt);
-                            out.write(buffer, 0, cnt);
-                            out.flush();
-                        } else {
-                            for (int i = 0; i < cnt; i++) {
-                                byteBufferList.add(buffer[i]);
-                                if (buffer[i] == bSeparator[iSeparatorCnt]) {
-                                    if (++iSeparatorCnt == bSeparator.length) {
-                                        byte[] byteArray = byteList2ByteArrays(byteBufferList);
-                                        debugLog(byteArray, byteArray.length);
-
-                                        out.write(byteArray, 0, byteArray.length); //HEADER文字列
-                                        
-                                        //TODO: ここでプロキシ先を選択し、Proxy thread を生成する
-                                        createThread(output_socket, input_socket).start();
-                                        
-                                        out.write(buffer, i + 1, cnt);
-                                        out.flush();
-
-                                        bData = true;
-                                        break;
-                                    };
-                                } else {
-                                    iSeparatorCnt = 0;
-                                }
-                            }
+                    byte[] read_buffer = new byte[2048];
+                    while ((cnt = in.read(read_buffer, 0, read_buffer.length)) != -1) {
+                        for (int i = 0; i < cnt; i++){
+                            inputBuffer.add(read_buffer[i]);
                         }
-                    }
+                        if(ProxyUtils.containData(inputBuffer, ProxyUtils._HttpSeparator)){
+                            byte [] request_data = ProxyUtils.byteList2ByteArrays(inputBuffer);
+                            ProxyUtils.debugLog(request_data, request_data.length);
+                            
+                            
+                            byte[] response = MultiHostSender.createMultiHostResponse(request_data, _DockerHostInfo.HOST_ARRAYS);
+                            out.write(response);
+                            out.flush();
+                            break;
+                        }
+                    }                    
                 } catch (Exception err) {
                     //err.printStackTrace();
                 } finally {
@@ -127,31 +120,11 @@ public class HttpSocks {
                 }
             }
 
-            public byte[] byteList2ByteArrays(List<Byte> byteList) {
-                byte[] ret = new byte[byteList.size()];
-                for (int i = 0; i < byteList.size(); i++) {
-                    ret[i] = byteList.get(i);
-                }
-                return ret;
-            }
-
-            public void debugLog(byte[] data, int cnt) {
-                System.out.print(new String(data, 0, cnt));
-                System.out.println();
-            }
+            
         };
         return new Thread(r);
     }
+    
 
-    public static void debugLog(byte[] data, int cnt) {
-        //DEBUG LOG
-        /*
-        for (int i = 0; i < cnt; i++) {
-            System.out.print("0x" + Integer.toHexString(data[i] & 0xff));
-        }
-         */
-        System.out.print(new String(data, 0, cnt));
-        System.out.println();
-    }
 
 }
