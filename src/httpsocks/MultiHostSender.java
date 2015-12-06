@@ -35,7 +35,7 @@ public class MultiHostSender {
             out.flush();
 
             int cnt = -1;
-            byte[] read_buffer = new byte[1024];
+            byte[] read_buffer = new byte[512];
             while ((cnt = in.read(read_buffer, 0, read_buffer.length)) != -1) {
                 ProxyUtils.debugLog(read_buffer, cnt);
                 for (int i = 0; i < cnt; i++) {
@@ -43,7 +43,7 @@ public class MultiHostSender {
                 }
                 
                 
-                if(ProxyUtils.containData(response, ProxyUtils._HttpSeparator)){
+                if(ProxyUtils.isResponseEnd(response)){
                     break;
                 }
             }

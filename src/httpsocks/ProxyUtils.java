@@ -36,6 +36,17 @@ public class ProxyUtils {
         return false;
     }
 
+    
+    public static boolean isResponseEnd(List<Byte> data) {
+        String response = new String( byteList2ByteArrays(data) );
+        if( response.contains("Transfer-Encoding: chunked") ){
+            return response.endsWith("0\r\n\r\n");
+        }else{
+            return response.endsWith("\n");
+        }
+    }
+
+    
     public static void debugLog(byte[] data, int cnt) {
         //DEBUG LOG
         /*
