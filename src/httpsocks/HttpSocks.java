@@ -5,7 +5,6 @@
  */
 package httpsocks;
 
-import httpsocks.ProxyUtils;
 import java.io.BufferedInputStream;
 import java.io.BufferedOutputStream;
 import java.io.IOException;
@@ -22,7 +21,7 @@ import java.util.List;
  */
 public class HttpSocks {
 
-    static class _DockerHostInfo{
+    public static class _DockerHostInfo{
         public static final List<_DockerHostInfo> HOST_ARRAYS = new ArrayList<>();
         public int port;
         public String host;
@@ -78,7 +77,7 @@ public class HttpSocks {
                         out.flush();
                     }
                 } catch (Exception err) {
-                    //err.printStackTrace();
+                    err.printStackTrace();
                 } finally {
                     System.out.println("== close ==" + this);
                 }
@@ -107,14 +106,14 @@ public class HttpSocks {
                             ProxyUtils.debugLog(request_data, request_data.length);
                             
                             
-                            byte[] response = MultiHostSender.createMultiHostResponse(request_data, _DockerHostInfo.HOST_ARRAYS);
+                            byte[] response = MultiHostSender.createMultiHostResponse(new String(request_data), _DockerHostInfo.HOST_ARRAYS);
                             out.write(response);
                             out.flush();
                             break;
                         }
                     }                    
                 } catch (Exception err) {
-                    //err.printStackTrace();
+                    err.printStackTrace();
                 } finally {
                     System.out.println("== close ==" + this);
                 }

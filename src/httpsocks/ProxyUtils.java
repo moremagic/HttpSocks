@@ -45,7 +45,6 @@ public class ProxyUtils {
             return response.endsWith("\n");
         }
     }
-
     
     public static void debugLog(byte[] data, int cnt) {
         //DEBUG LOG
