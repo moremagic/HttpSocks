@@ -5,6 +5,8 @@
  */
 package httpsocks;
 
+import java.text.SimpleDateFormat;
+import java.util.Date;
 import java.util.List;
 
 /**
@@ -44,6 +46,30 @@ public class ProxyUtils {
         }else{
             return response.endsWith("\n");
         }
+    }
+    
+    public static String appendObject(Object a, Object b){
+        if(isNumber(a) && isNumber(b)){
+            return Long.toString(Long.parseLong(a.toString()) + Long.parseLong(b.toString()) );
+        }else{
+            return a + " " + b;
+        }
+    }
+    
+    private static boolean isNumber(Object o){
+        try{
+            Long.parseLong(o.toString());
+            return true;
+        }catch(Exception err){
+            return false;
+        }
+    }
+    
+    public static String createHttResponceHeader(String sDockerVersion){
+        return "HTTP/1.1 200 OK\n"
+                + "Content-Type: application/json\n"
+                + "Server: Docker/" + sDockerVersion + " (linux)\n"
+                + "Date: " + new SimpleDateFormat("EEE, d MMM yyyy HH:mm:ss z").format(new Date()) + "\n";
     }
     
     public static void debugLog(byte[] data, int cnt) {
