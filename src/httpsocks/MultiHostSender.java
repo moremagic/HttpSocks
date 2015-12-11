@@ -37,33 +37,46 @@ public class MultiHostSender {
      */
     public static byte[] createMultiHostResponse(String request, List<HttpSocks._DockerHostInfo> host_list) throws IOException {
         // GET /v1.21/version HTTP/1.1
+        String sMethod = request.substring(0, request.indexOf("\r\n")).split(" ")[0];
         String sURL = request.substring(0, request.indexOf("\r\n")).split(" ")[1];
         if (sURL.contains("?")) {
             sURL = sURL.substring(0, sURL.lastIndexOf("?"));
         }
 
         byte[] ret = null;
-        if (sURL.endsWith("/info")) {
+        if (sMethod.equals("GET") && sURL.endsWith("/info")) {
             //docker info
             ret = getInfo(request, host_list);
-        } else if (sURL.endsWith("/version")) {
+        } else if (sMethod.equals("GET") && sURL.endsWith("/version")) {
             //docker version
             ret = getVersions(request, host_list);
-        } else if (sURL.endsWith("/containers/json")) {
+        } else if (sMethod.equals("GET") && sURL.endsWith("/containers/json")) {
             //docker ps
             ret = getContainerList(request, host_list);
-        } else if (sURL.endsWith("/images/json")) {
+        } else if (sMethod.equals("GET") && sURL.endsWith("/images/json")) {
             //docker images
             ret = getContainerList(request, host_list);
-        } else if (Pattern.compile("\\/containers\\/.+\\/json$").matcher(sURL).find()) {
+        } else if (sMethod.equals("GET") && Pattern.compile("\\/containers\\/.+\\/json$").matcher(sURL).find()) {
             //docker container info
             ret = getContainerInfo(request, host_list);
-        } else if (Pattern.compile("\\/images\\/.+\\/json$").matcher(sURL).find()) {
+        } else if (sMethod.equals("GET") && Pattern.compile("\\/images\\/.+\\/json$").matcher(sURL).find()) {
             //docker container info
             ret = getContainerInfo(request, host_list);
-        } else if (sURL.endsWith("/images/search")) {
+        } else if (sMethod.equals("GET") && sURL.endsWith("/images/search")) {
             //docker search
             ret = plainRequest(request, host_list);
+        } else if (sMethod.equals("DELETE") && sURL.startsWith("/containers/")) {
+            //docker delete
+            System.out.println("delete!!");
+            ret = deleteContainer(request, host_list);
+        } else if (sMethod.equals("POST") && Pattern.compile("\\/containers\\/.+\\/start").matcher(sURL).find()) {
+            //docker container info
+            ret = startStopContainer(request, host_list);
+        } else if (sMethod.equals("POST") && Pattern.compile("\\/containers\\/.+\\/stop").matcher(sURL).find()) {
+            //docker container info
+            ret = startStopContainer(request, host_list);
+            
+            
 //        } else if (sURL.endsWith("containers/create")) {
 //            //docker run
 //            ret = getCreates(request, host_list);
@@ -119,7 +132,7 @@ public class MultiHostSender {
         }
 
         String ver_data = JSON.encode(verMap);
-        return (ProxyUtils.createHttResponceHeader("1.9.1")
+        return (ProxyUtils.createHttResponceHeader200("1.9.1")
                 + "Content-Length: " + (ver_data.length() + 1) + "\n\n" + ver_data + "\n").getBytes();
     }
 
@@ -148,7 +161,7 @@ public class MultiHostSender {
         }
 
         String ver_data = JSON.encode(verMap);
-        return (ProxyUtils.createHttResponceHeader("1.9.1")
+        return (ProxyUtils.createHttResponceHeader200("1.9.1")
                 + "Content-Length: "
                 + (ver_data.length() + 1)
                 + "\n\n"
@@ -169,13 +182,56 @@ public class MultiHostSender {
             String sData = getWebAPIResponce("http://" + host_list.get(i).host + ":" + host_list.get(i).port + request.substring(0, request.indexOf("\r\n")).split(" ")[1], "GET");
             retList.addAll((List) JSON.decode(sData));
         }
-        String ret = ProxyUtils.createHttResponceHeader("1.9.1")
+        String ret = ProxyUtils.createHttResponceHeader200("1.9.1")
                 + "Transfer-Encoding: chunked\n\n"
                 + Integer.toHexString(JSON.encode(retList).length() + 1) + "\r\n"
                 + JSON.encode(retList)
                 + new String(ProxyUtils._HttpSeparator)
                 + "0"
                 + new String(ProxyUtils._HttpSeparator);
+        return ret.getBytes();
+    }
+
+    
+    /**
+     * (docker start) response create
+     *
+     * @param request
+     * @param host_list
+     * @return
+     * @throws IOException
+     */
+    private static byte[] startStopContainer(String request, List<HttpSocks._DockerHostInfo> host_list) throws IOException {
+        for (int i = 0; i < host_list.size(); i++) {
+            try {
+                String sData = getWebAPIResponce("http://" + host_list.get(i).host + ":" + host_list.get(i).port + request.substring(0, request.indexOf("\r\n")).split(" ")[1], "POST");
+            } catch (IOException err) {
+                //nop
+            }
+        }
+
+        String ret = ProxyUtils.createHttResponceHeader204("1.9.1");
+        return ret.getBytes();
+    }    
+    
+    /**
+     * (docker delete) response create
+     *
+     * @param request
+     * @param host_list
+     * @return
+     * @throws IOException
+     */
+    private static byte[] deleteContainer(String request, List<HttpSocks._DockerHostInfo> host_list) throws IOException {
+        for (int i = 0; i < host_list.size(); i++) {
+            try {
+                String sData = getWebAPIResponce("http://" + host_list.get(i).host + ":" + host_list.get(i).port + request.substring(0, request.indexOf("\r\n")).split(" ")[1], "DELETE");
+            } catch (IOException err) {
+                //nop
+            }
+        }
+
+        String ret = ProxyUtils.createHttResponceHeader204("1.9.1");
         return ret.getBytes();
     }
 
@@ -200,7 +256,7 @@ public class MultiHostSender {
             }
         }
 
-        String ret = ProxyUtils.createHttResponceHeader("1.9.1")
+        String ret = ProxyUtils.createHttResponceHeader200("1.9.1")
                 + "Transfer-Encoding: chunked\n\n"
                 + Integer.toHexString(JSON.encode(retMap).length() + 1) + "\r\n"
                 + JSON.encode(retMap)
