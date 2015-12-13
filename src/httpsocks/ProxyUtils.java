@@ -65,6 +65,13 @@ public class ProxyUtils {
         }
     }
 
+    public static String createHttResponceHeader201(String sDockerVersion) {
+        return "HTTP/1.1 201 Created\n"
+                + "Content-Type: application/json\n"
+                + "Server: Docker/" + sDockerVersion + " (linux)\n"
+                + "Date: " + new SimpleDateFormat("EEE, d MMM yyyy HH:mm:ss z").format(new Date()) + "\n\n\n";
+    }
+
     public static String createHttResponceHeader204(String sDockerVersion) {
         return "HTTP/1.1 204 No Content\n"
                 + "Server: Docker/" + sDockerVersion + " (linux)\n"

@@ -17,6 +17,8 @@ import java.net.Socket;
 import java.net.URL;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Collections;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.regex.Pattern;
@@ -64,29 +66,28 @@ public class MultiHostSender {
             ret = getContainerInfo(request, host_list);
         } else if (sMethod.equals("GET") && sURL.endsWith("/images/search")) {
             //docker search
-            ret = plainRequest(request, host_list);
+            // かならず１つめのホストを使用して検索を行う
+            ret = plainRequest(request, host_list.get(0));
         } else if (sMethod.equals("DELETE") && sURL.startsWith("/containers/")) {
             //docker delete
-            System.out.println("delete!!");
             ret = deleteContainer(request, host_list);
+        } else if (sMethod.equals("POST") && sURL.endsWith("/containers/create")) {
+            //docker container create
+            ret = getConteinarCreate(request, getHasMargineHostInfoSortedList(host_list));
         } else if (sMethod.equals("POST") && Pattern.compile("\\/containers\\/.+\\/start").matcher(sURL).find()) {
-            //docker container info
+            //docker container strart
             ret = startStopContainer(request, host_list);
         } else if (sMethod.equals("POST") && Pattern.compile("\\/containers\\/.+\\/stop").matcher(sURL).find()) {
-            //docker container info
+            //docker container stop
             ret = startStopContainer(request, host_list);
-            
-            
-//        } else if (sURL.endsWith("containers/create")) {
-//            //docker run
-//            ret = getCreates(request, host_list);
         } else {
-            //System.err.println("no such API command.");
-            plainRequest(request, host_list);
+            System.err.println("no such API command.");
+            //ret = plainRequest(request, host_list);
         }
 
         System.out.println(">> url : [" + sURL + "]");
-        System.out.println("----------<<create response>>----------\n" + new String(ret) + "\n------------------------------");
+        if(ret != null)System.out.println("----------<<create response>>----------\n" + new String(ret) + "\n------------------------------");
+        else System.out.println("----------<<create response>>----------\n null \n------------------------------");
 
         return ret;
     }
@@ -266,8 +267,59 @@ public class MultiHostSender {
         return ret.getBytes();
     }
 
-    private static byte[] plainRequest(String request, List<HttpSocks._DockerHostInfo> host_list) throws IOException {
-        Socket soc = new Socket(host_list.get(0).host, host_list.get(0).port);
+    /**
+     * 余力の残っているホストを取得する
+     * @param host_list
+     * @return
+     * @throws IOException 
+     */
+    private static List<HttpSocks._DockerHostInfo> getHasMargineHostInfoSortedList(List<HttpSocks._DockerHostInfo> host_list) throws IOException {
+        Map<Integer, HttpSocks._DockerHostInfo> host_map = new HashMap<>();
+        for (int i = 0; i < host_list.size(); i++) {
+            String sData = getWebAPIResponce("http://" + host_list.get(i).host + ":" + host_list.get(i).port + "/containers/json", "GET");
+            host_map.put(((List) JSON.decode(sData)).size(), host_list.get(i));
+        }
+        
+        List<Integer> keyList = new ArrayList(host_map.keySet());
+        Collections.sort(keyList);
+        
+        List<HttpSocks._DockerHostInfo> ret = new ArrayList<>();
+        for(Integer key :keyList){
+            ret.add(host_map.get(key));
+        }
+        
+        
+        System.out.println(keyList);
+        return ret;
+    }    
+    
+    /**
+     * docker create response create
+     *
+     * @param request
+     * @param host_list
+     * @return
+     * @throws IOException
+     */
+    private static byte[] getConteinarCreate(String request, List<HttpSocks._DockerHostInfo> host_list) throws IOException {
+        String sData = "";
+        for (int i = 0; i < host_list.size(); i++) {
+            try {
+                sData = new String( plainRequest(request, host_list.get(i)) );
+                if( sData.split("\r\n")[0].contains("HTTP/1.1 201 Created")){
+                    return sData.getBytes();
+                }
+            } catch (IOException err) {
+                //nop
+                err.printStackTrace();
+            }
+        }
+        
+        throw new IOException("error create;");
+    }
+
+    private static byte[] plainRequest(String request, HttpSocks._DockerHostInfo host_info) throws IOException {
+        Socket soc = new Socket(host_info.host, host_info.port);
         return sendRequest(request.getBytes(), soc);
     }
 
@@ -331,8 +383,6 @@ public class MultiHostSender {
             while ((cnt = in.read(buffer, 0, buffer.length)) != -1) {
                 ret.append(new String(buffer, 0, cnt));
             }
-        } catch (Exception err) {
-            err.printStackTrace();
         }
         return ret.toString();
     }
