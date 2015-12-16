@@ -36,14 +36,15 @@ public class HttpSocks {
      * @param args the command line arguments
      */
     public static void main(String[] args) {
-        if (args.length == 0 || args.length < 3) {
-            System.err.println("Usage: java httpssocks.HttpSocks [listen] { [host] [port] } * n");
-            System.err.println("  httpssocks.HttpSocks 55110 192.168.1.6 2375 192.168.1.7 2375");
+        if (args.length == 0 || args.length < 2) {
+            System.err.println("Usage: java httpssocks.HttpSocks [listen] { [host:port], } * n");
+            System.err.println("  httpssocks.HttpSocks 55110 192.168.1.6:2375,192.168.1.7:2375");
             System.exit(-1);
         }
         
-        for(int i = 1 ; i < args.length ; i += 2){
-            _DockerHostInfo.HOST_ARRAYS.add(new _DockerHostInfo(args[i], Integer.parseInt(args[i+1])));
+        for(String hostsArray: args[1].split(",")){
+            String[] hosts = hostsArray.split(":");
+            _DockerHostInfo.HOST_ARRAYS.add(new _DockerHostInfo(hosts[0], Integer.parseInt(hosts[1])));
         }
         proxy(Integer.parseInt(args[0]));
     }
